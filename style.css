@@ -1,6 +1,6 @@
 html, body {
   margin: 0;
-  background: black;
+  background: red;
   overflow: hidden;
 }
 
@@ -46,3 +46,4 @@ canvas {
 .cell.me {
   background: white;
 }
+
