@@ -2,13 +2,22 @@
 // CONFIGURE FIREBASE
 // ----------------------
 const firebaseConfig = {
-  apiKey: "AIzaSyDFFIM-hOCR8BHL9W_ji8NJwLZH0OleAQ0",
+ apiKey: "AIzaSyDFFIM-hOCR8BHL9W_ji8NJwLZH0OleAQ0",
   authDomain: "dvdlogothingy.firebaseapp.com",
   databaseURL: "https://dvdlogothingy-default-rtdb.firebaseio.com",
   projectId: "dvdlogothingy",
   storageBucket: "dvdlogothingy.firebasestorage.app",
   messagingSenderId: "203177996220",
-  appId: "1:203177996220:web:5d95399673795bd9da05b9",
+  appId: "1:203177996220:web:5d95399673795bd9da05b9"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+Note: This option uses the modular JavaScript SDK, which provides reduced SDK size.
+
+Learn more about Firebase for web: Get Started, Web SDK API Reference, Samples
+
+
 };
 
 firebase.initializeApp(firebaseConfig);
@@ -53,9 +62,8 @@ addEventListener("resize", resize);
 // ----------------------
 toggleUI.onclick = () => {
   ui.classList.toggle("hidden");
-  toggleUI.textContent = ui.classList.contains("hidden")
-    ? "Show Panel"
-    : "Hide Panel";
+  toggleUI.textContent =
+    ui.classList.contains("hidden") ? "Show Panel" : "Hide Panel";
 };
 
 // ----------------------
@@ -87,7 +95,7 @@ createBtn.onclick = async () => {
   await roomRef.set({
     host: id,
     dvd: { x: 100, y: 100, w: 120, h: 60, vx: 200, vy: 150 },
-    screens: {},
+    screens: {}
   });
 
   listenRoom(room);
@@ -103,7 +111,7 @@ joinBtn.onclick = async () => {
     y: screenPos.y * canvas.height,
     w: canvas.width,
     h: canvas.height,
-    locked: locked,
+    locked: locked
   });
 
   listenRoom(room);
@@ -120,7 +128,7 @@ lockBtn.onclick = () => {
 // ----------------------
 function listenRoom(room) {
   const roomRef = db.ref(`rooms/${room}`);
-  roomRef.on("value", (snapshot) => {
+  roomRef.on("value", snapshot => {
     const data = snapshot.val();
     if (!data) return;
 
@@ -148,7 +156,7 @@ function physicsLoop() {
   let hitX = true;
   let hitY = true;
 
-  Object.values(screens).forEach((s) => {
+  Object.values(screens).forEach(s => {
     if (
       dvd.x + dvd.w > s.x &&
       dvd.x < s.x + s.w &&
@@ -185,12 +193,7 @@ function loop() {
   const lx = dvd.x - me.x;
   const ly = dvd.y - me.y;
 
-  if (
-    lx + dvd.w > 0 &&
-    lx < canvas.width &&
-    ly + dvd.h > 0 &&
-    ly < canvas.height
-  ) {
+  if (lx + dvd.w > 0 && lx < canvas.width && ly + dvd.h > 0 && ly < canvas.height) {
     ctx.fillStyle = "white";
     ctx.fillRect(lx, ly, dvd.w, dvd.h);
     ctx.fillStyle = "black";
