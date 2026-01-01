@@ -1,0 +1,49 @@
+html,
+body {
+  margin: 0;
+  background: black;
+  overflow: hidden;
+}
+
+canvas {
+  display: block;
+}
+
+#ui {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  background: #111;
+  color: white;
+  padding: 10px;
+  font-family: Arial, sans-serif;
+  z-index: 10;
+}
+
+#ui.hidden {
+  display: none;
+}
+
+#toggleUI {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  z-index: 11;
+}
+
+#grid {
+  display: grid;
+  grid-template-columns: repeat(3, 40px);
+  grid-template-rows: repeat(3, 40px);
+  gap: 4px;
+  margin: 10px 0;
+}
+
+.cell {
+  background: #333;
+  cursor: pointer;
+}
+
+.cell.me {
+  background: white;
+}
