@@ -1,11 +1,27 @@
-const ws = new WebSocket("ws://localhost:8080"); // change when deployed
+// ----------------------
+// CONFIGURE FIREBASE
+// ----------------------
+const firebaseConfig = {
+  apiKey: "AIzaSyDFFIM-hOCR8BHL9W_ji8NJwLZH0OleAQ0",
+  authDomain: "dvdlogothingy.firebaseapp.com",
+  databaseURL: "https://dvdlogothingy-default-rtdb.firebaseio.com",
+  projectId: "dvdlogothingy",
+  storageBucket: "dvdlogothingy.firebasestorage.app",
+  messagingSenderId: "203177996220",
+  appId: "1:203177996220:web:5d95399673795bd9da05b9",
+};
 
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+
+// ----------------------
+// VARIABLES
+// ----------------------
 const canvas = document.getElementById("screen");
 const ctx = canvas.getContext("2d");
 
 const ui = document.getElementById("ui");
 const toggleUI = document.getElementById("toggleUI");
-
 const createBtn = document.getElementById("create");
 const joinBtn = document.getElementById("join");
 const lockBtn = document.getElementById("lock");
@@ -20,11 +36,11 @@ let screenPos = { x: 0, y: 0 };
 let screens = {};
 let dvd = null;
 let isHost = false;
+let selectedCell = null;
 
-/* ======================
-   CANVAS
-====================== */
-
+// ----------------------
+// CANVAS RESIZE
+// ----------------------
 function resize() {
   canvas.width = innerWidth;
   canvas.height = innerHeight;
@@ -32,10 +48,9 @@ function resize() {
 resize();
 addEventListener("resize", resize);
 
-/* ======================
-   UI TOGGLE
-====================== */
-
+// ----------------------
+// UI TOGGLE
+// ----------------------
 toggleUI.onclick = () => {
   ui.classList.toggle("hidden");
   toggleUI.textContent = ui.classList.contains("hidden")
@@ -43,72 +58,120 @@ toggleUI.onclick = () => {
     : "Hide Panel";
 };
 
-/* ======================
-   GRID
-====================== */
-
-let selected = null;
-
+// ----------------------
+// GRID SETUP
+// ----------------------
 for (let y = -1; y <= 1; y++) {
   for (let x = -1; x <= 1; x++) {
     const cell = document.createElement("div");
     cell.className = "cell";
     cell.onclick = () => {
       if (locked) return;
-      if (selected) selected.classList.remove("me");
+      if (selectedCell) selectedCell.classList.remove("me");
       cell.classList.add("me");
-      selected = cell;
+      selectedCell = cell;
       screenPos = { x, y };
     };
     grid.appendChild(cell);
   }
 }
 
-/* ======================
-   ROOM
-====================== */
-
-createBtn.onclick = () => {
+// ----------------------
+// ROOM MANAGEMENT
+// ----------------------
+createBtn.onclick = async () => {
   room = Math.random().toString(36).slice(2, 6).toUpperCase();
-  ws.send(JSON.stringify({ type: "create", code: room }));
   codeInput.value = room;
+
+  const roomRef = db.ref(`rooms/${room}`);
+  await roomRef.set({
+    host: id,
+    dvd: { x: 100, y: 100, w: 120, h: 60, vx: 200, vy: 150 },
+    screens: {},
+  });
+
+  listenRoom(room);
 };
 
-joinBtn.onclick = () => {
+joinBtn.onclick = async () => {
   room = codeInput.value.toUpperCase();
-  ws.send(
-    JSON.stringify({
-      type: "join",
-      code: room,
-      screen: {
-        x: screenPos.x * canvas.width,
-        y: screenPos.y * canvas.height,
-        w: canvas.width,
-        h: canvas.height,
-      },
-    })
-  );
+  if (!room) return;
+
+  const screenRef = db.ref(`rooms/${room}/screens/${id}`);
+  await screenRef.set({
+    x: screenPos.x * canvas.width,
+    y: screenPos.y * canvas.height,
+    w: canvas.width,
+    h: canvas.height,
+    locked: locked,
+  });
+
+  listenRoom(room);
 };
 
-lockBtn.onclick = () => (locked = true);
-
-/* ======================
-   NETWORK
-====================== */
-
-ws.onmessage = (e) => {
-  const msg = JSON.parse(e.data);
-  if (msg.type !== "state") return;
-
-  screens = msg.screens;
-  dvd = msg.dvd;
-  isHost = msg.host === id;
+lockBtn.onclick = () => {
+  locked = true;
+  if (!room) return;
+  db.ref(`rooms/${room}/screens/${id}`).update({ locked: true });
 };
 
-/* ======================
-   RENDER
-====================== */
+// ----------------------
+// LISTEN TO ROOM CHANGES
+// ----------------------
+function listenRoom(room) {
+  const roomRef = db.ref(`rooms/${room}`);
+  roomRef.on("value", (snapshot) => {
+    const data = snapshot.val();
+    if (!data) return;
 
+    screens = data.screens || {};
+    dvd = data.dvd;
+    isHost = data.host === id;
+
+    // Host election if disconnected
+    if (!isHost && !data.host) {
+      const firstClient = Object.keys(screens)[0];
+      if (firstClient) roomRef.update({ host: firstClient });
+    }
+  });
+}
+
+// ----------------------
+// PHYSICS LOOP (HOST ONLY)
+// ----------------------
+function physicsLoop() {
+  if (!isHost || !dvd) return;
+
+  dvd.x += dvd.vx / 60;
+  dvd.y += dvd.vy / 60;
+
+  let hitX = true;
+  let hitY = true;
+
+  Object.values(screens).forEach((s) => {
+    if (
+      dvd.x + dvd.w > s.x &&
+      dvd.x < s.x + s.w &&
+      dvd.y + dvd.h > s.y &&
+      dvd.y < s.y + s.h
+    ) {
+      hitX = false;
+      hitY = false;
+    }
+  });
+
+  if (hitX) dvd.vx *= -1;
+  if (hitY) dvd.vy *= -1;
+
+  // Write back to Firebase
+  db.ref(`rooms/${room}/dvd`).set(dvd);
+}
+
+setInterval(physicsLoop, 1000 / 60);
+
+// ----------------------
+// RENDER LOOP
+// ----------------------
 function loop() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
